@@ -1,0 +1,44 @@
+Mar 7, 2019
+This is a redesign of the Chandelier Exit indicator. It removes stupid transitions between Chandelier Exit' states and highlights initial points for both lines.
+
+This indicator was originally developed by Charles Le Beau and popularized by Dr. Alexander Elder in his book "Come Into My Trading Room: A Complete Guide to Trading" (2002).
+
+In short, this is a trailing stop-loss based on the Average True Range (ATR).
+Aug 4, 2019
+Release Notes
+
+    Added Buy/Sell alerts
+    Added Buy/Sell labels
+
+Aug 4, 2019
+Release Notes
+
+    Fix erratum
+
+Aug 26, 2019
+Release Notes
+
+    Updated to v4
+
+Oct 13, 2019
+Release Notes
+
+    Added long/short state highlighting
+
+Nov 28, 2020
+Release Notes
+
+    Update
+
+Nov 25, 2023
+Release Notes
+
+    Upgraded to PineScript V5
+    Added option to wait for bar confirmation before triggering an alert
+
+Jul 28, 2025
+Release Notes
+
+    Pine Script V6
+    Minor UI improvements
+    Refactoring
