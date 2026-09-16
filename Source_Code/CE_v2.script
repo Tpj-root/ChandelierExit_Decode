@@ -1,0 +1,588 @@
+//@version=6
+
+// Copyright (c) 2019-present, Alex Orekhov (everget)
+// Chandelier Exit script may be freely distributed under the terms of the GPL-3.0 license.
+
+indicator('Chandelier Exit - Live Debug', shorttitle='CE DEBUG', overlay=true)
+
+// ============================================================================
+// INPUTS
+// ============================================================================
+
+const string calcGroup = 'Calculation'
+
+length = input.int(
+     22,
+     title='ATR Period',
+     group=calcGroup)
+
+mult = input.float(
+     3.0,
+     step=0.1,
+     title='ATR Multiplier',
+     group=calcGroup)
+
+useClose = input.bool(
+     true,
+     title='Use Close Price for Extremums',
+     group=calcGroup)
+
+const string visualGroup = 'Visuals'
+
+showLabels = input.bool(
+     true,
+     title='Show Buy/Sell Labels',
+     group=visualGroup)
+
+highlightState = input.bool(
+     true,
+     title='Highlight State',
+     group=visualGroup)
+
+showCEValues = input.bool(
+     true,
+     title='Show CE Values On Signals',
+     group=visualGroup)
+
+showTable = input.bool(
+     true,
+     title='Show Live Calculation Table',
+     group=visualGroup)
+
+showRawValues = input.bool(
+     true,
+     title='Show Raw Calculation Values',
+     group=visualGroup)
+
+showBarValues = input.bool(
+     true,
+     title='Show OHLC / ATR Values',
+     group=visualGroup)
+
+const string alertGroup = 'Alerts'
+
+awaitBarConfirmation = input.bool(
+     true,
+     title='Await Bar Confirmation',
+     group=alertGroup)
+
+
+// ============================================================================
+// ORIGINAL CHANDELIER EXIT CALCULATION
+// ============================================================================
+
+// ATR
+atr = mult * ta.atr(length)
+
+// Extremums
+highestValue = useClose ? ta.highest(close, length) : ta.highest(length)
+lowestValue  = useClose ? ta.lowest(close, length) : ta.lowest(length)
+
+// Raw CE stops
+longStopRaw = highestValue - atr
+shortStopRaw = lowestValue + atr
+
+// ---------------------------------------------------------------------------
+// ORIGINAL LONG STOP LOGIC
+// ---------------------------------------------------------------------------
+
+longStop = longStopRaw
+
+longStopPrev = nz(longStop[1], longStop)
+
+longStop := close[1] > longStopPrev
+     ? math.max(longStop, longStopPrev)
+     : longStop
+
+// ---------------------------------------------------------------------------
+// ORIGINAL SHORT STOP LOGIC
+// ---------------------------------------------------------------------------
+
+shortStop = shortStopRaw
+
+shortStopPrev = nz(shortStop[1], shortStop)
+
+shortStop := close[1] < shortStopPrev
+     ? math.min(shortStop, shortStopPrev)
+     : shortStop
+
+// ---------------------------------------------------------------------------
+// ORIGINAL DIRECTION LOGIC
+// ---------------------------------------------------------------------------
+
+var int dir = 1
+
+dir := close > shortStopPrev
+     ? 1
+     : close < longStopPrev
+     ? -1
+     : dir
+
+
+// ============================================================================
+// COLORS
+// ============================================================================
+
+const color textColor = color.white
+
+const color longColor = color.green
+const color shortColor = color.red
+
+const color longFillColor = color.new(color.green, 85)
+const color shortFillColor = color.new(color.red, 85)
+
+const color tableHeader = color.rgb(35, 35, 45)
+const color tableBackground = color.rgb(20, 20, 25)
+
+
+// ============================================================================
+// SIGNALS
+// ============================================================================
+
+buySignal = dir == 1 and dir[1] == -1
+
+sellSignal = dir == -1 and dir[1] == 1
+
+
+// ============================================================================
+// CE PLOTS
+// ============================================================================
+
+longStopPlot = plot(
+     dir == 1 ? longStop : na,
+     title='Long Stop',
+     style=plot.style_linebr,
+     linewidth=3,
+     color=longColor)
+
+plotshape(
+     buySignal ? longStop : na,
+     title='Long Stop Start',
+     location=location.absolute,
+     style=shape.circle,
+     size=size.small,
+     color=longColor)
+
+plotshape(
+     buySignal and showLabels ? longStop : na,
+     title='Buy Label',
+     text='BUY',
+     location=location.absolute,
+     style=shape.labelup,
+     size=size.small,
+     color=longColor,
+     textcolor=textColor)
+
+shortStopPlot = plot(
+     dir == 1 ? na : shortStop,
+     title='Short Stop',
+     style=plot.style_linebr,
+     linewidth=3,
+     color=shortColor)
+
+plotshape(
+     sellSignal ? shortStop : na,
+     title='Short Stop Start',
+     location=location.absolute,
+     style=shape.circle,
+     size=size.small,
+     color=shortColor)
+
+plotshape(
+     sellSignal and showLabels ? shortStop : na,
+     title='Sell Label',
+     text='SELL',
+     location=location.absolute,
+     style=shape.labeldown,
+     size=size.small,
+     color=shortColor,
+     textcolor=textColor)
+
+
+// ============================================================================
+// STATE FILL
+// ============================================================================
+
+midPricePlot = plot(
+     ohlc4,
+     title='',
+     display=display.none,
+     editable=false)
+
+fill(
+     midPricePlot,
+     longStopPlot,
+     title='Long State Filling',
+     color=highlightState and dir == 1
+          ? longFillColor
+          : na)
+
+fill(
+     midPricePlot,
+     shortStopPlot,
+     title='Short State Filling',
+     color=highlightState and dir == -1
+          ? shortFillColor
+          : na)
+
+
+// ============================================================================
+// SIGNAL VALUE LABELS
+// ============================================================================
+
+if showCEValues and buySignal
+    label.new(
+         bar_index,
+         longStop,
+         'BUY\n' +
+         'CE: ' + str.tostring(longStop, format.mintick) + '\n' +
+         'ATR: ' + str.tostring(atr, format.mintick) + '\n' +
+         'High: ' + str.tostring(highestValue, format.mintick),
+         style=label.style_label_up,
+         color=longColor,
+         textcolor=color.white,
+         size=size.small)
+
+if showCEValues and sellSignal
+    label.new(
+         bar_index,
+         shortStop,
+         'SELL\n' +
+         'CE: ' + str.tostring(shortStop, format.mintick) + '\n' +
+         'ATR: ' + str.tostring(atr, format.mintick) + '\n' +
+         'Low: ' + str.tostring(lowestValue, format.mintick),
+         style=label.style_label_down,
+         color=shortColor,
+         textcolor=color.white,
+         size=size.small)
+
+
+// ============================================================================
+// LIVE BAR VALUE LABEL
+// ============================================================================
+
+if showBarValues and barstate.islast
+    label.new(
+         bar_index,
+         high,
+         'CLOSE  ' + str.tostring(close, format.mintick) +
+         '\nATR × M  ' + str.tostring(atr, format.mintick) +
+         '\nLONG CE  ' + str.tostring(longStop, format.mintick) +
+         '\nSHORT CE ' + str.tostring(shortStop, format.mintick),
+         style=label.style_label_down,
+         color=tableBackground,
+         textcolor=color.white,
+         size=size.small)
+
+
+// ============================================================================
+// LIVE CALCULATION TABLE
+// ============================================================================
+
+var table ceTable = table.new(
+     position.bottom_left,
+     2,
+     16,
+     border_width=1)
+
+if showTable and barstate.islast
+
+    // Header
+    table.cell(
+         ceTable,
+         0,
+         0,
+         'CE LIVE DATA',
+         bgcolor=tableHeader,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         0,
+         'VALUE',
+         bgcolor=tableHeader,
+         text_color=color.white)
+
+    // Direction
+    table.cell(
+         ceTable,
+         0,
+         1,
+         'Direction',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         1,
+         dir == 1 ? 'BUY / LONG' : 'SELL / SHORT',
+         bgcolor=dir == 1 ? color.green : color.red,
+         text_color=color.white)
+
+    // Close
+    table.cell(
+         ceTable,
+         0,
+         2,
+         'Close',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         2,
+         str.tostring(close, format.mintick),
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    // ATR
+    table.cell(
+         ceTable,
+         0,
+         3,
+         'ATR × Mult',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         3,
+         str.tostring(atr, format.mintick),
+         bgcolor=tableBackground,
+         text_color=color.yellow)
+
+    // Highest
+    table.cell(
+         ceTable,
+         0,
+         4,
+         useClose ? 'Highest Close' : 'Highest High',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         4,
+         str.tostring(highestValue, format.mintick),
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    // Lowest
+    table.cell(
+         ceTable,
+         0,
+         5,
+         useClose ? 'Lowest Close' : 'Lowest Low',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         5,
+         str.tostring(lowestValue, format.mintick),
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    // Raw Long
+    table.cell(
+         ceTable,
+         0,
+         6,
+         'Long CE Raw',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         6,
+         str.tostring(longStopRaw, format.mintick),
+         bgcolor=tableBackground,
+         text_color=color.aqua)
+
+    // Previous Long
+    table.cell(
+         ceTable,
+         0,
+         7,
+         'Long CE Prev',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         7,
+         str.tostring(longStopPrev, format.mintick),
+         bgcolor=tableBackground,
+         text_color=color.orange)
+
+    // Final Long
+    table.cell(
+         ceTable,
+         0,
+         8,
+         'LONG CE FINAL',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         8,
+         str.tostring(longStop, format.mintick),
+         bgcolor=color.new(color.green, 70),
+         text_color=color.white)
+
+    // Raw Short
+    table.cell(
+         ceTable,
+         0,
+         9,
+         'Short CE Raw',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         9,
+         str.tostring(shortStopRaw, format.mintick),
+         bgcolor=tableBackground,
+         text_color=color.aqua)
+
+    // Previous Short
+    table.cell(
+         ceTable,
+         0,
+         10,
+         'Short CE Prev',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         10,
+         str.tostring(shortStopPrev, format.mintick),
+         bgcolor=tableBackground,
+         text_color=color.orange)
+
+    // Final Short
+    table.cell(
+         ceTable,
+         0,
+         11,
+         'SHORT CE FINAL',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         11,
+         str.tostring(shortStop, format.mintick),
+         bgcolor=color.new(color.red, 70),
+         text_color=color.white)
+
+    // Parameters
+    table.cell(
+         ceTable,
+         0,
+         12,
+         'ATR Period',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         12,
+         str.tostring(length),
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         0,
+         13,
+         'Multiplier',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         13,
+         str.tostring(mult),
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    // Previous close
+    table.cell(
+         ceTable,
+         0,
+         14,
+         'Previous Close',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         14,
+         str.tostring(close[1], format.mintick),
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    // Signal
+    table.cell(
+         ceTable,
+         0,
+         15,
+         'Signal',
+         bgcolor=tableBackground,
+         text_color=color.white)
+
+    table.cell(
+         ceTable,
+         1,
+         15,
+         buySignal ? 'BUY' : sellSignal ? 'SELL' : '-',
+         bgcolor=buySignal ? color.green : sellSignal ? color.red : tableBackground,
+         text_color=color.white)
+
+
+// ============================================================================
+// BAR CONFIRMATION
+// ============================================================================
+
+await = awaitBarConfirmation
+     ? barstate.isconfirmed
+     : true
+
+
+// ============================================================================
+// ALERTS
+// ============================================================================
+
+alertcondition(
+     dir != dir[1] and await,
+     title='CE Direction Change',
+     message='Chandelier Exit has changed direction, {{exchange}}:{{ticker}}')
+
+alertcondition(
+     buySignal and await,
+     title='CE Buy',
+     message='Chandelier Exit Buy, {{exchange}}:{{ticker}}')
+
+alertcondition(
+     sellSignal and await,
+     title='CE Sell',
+     message='Chandelier Exit Sell, {{exchange}}:{{ticker}}')
