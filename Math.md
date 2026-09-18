@@ -1702,53 +1702,32 @@ $$
 
 ### Step 7 — Trail Short Stop
 
-First calculate the **raw short stop**:
+First calculate the raw short stop:
 
 $$
-S_t^{raw}=L_t+ATR_t\times M
+S_t^{raw} = L_t + ATR_t \times M
 $$
 
-Then trail it so that the short stop does not move upward:
+Then trail the short stop:
 
 $$
-\boxed{
-S_t=
+S_t =
 \begin{cases}
-\min(S_t^{raw},S_{t-1}) & \text{if } C_{t-1}<S_{t-1}\\
+\min(S_t^{raw}, S_{t-1}) & \text{if } C_{t-1} < S_{t-1} \\
 S_t^{raw} & \text{otherwise}
 \end{cases}
-}
 $$
-
-Where:
-
-* \(S_t^{raw}\) = newly calculated short stop
-* \(S_{t-1}\) = previous short stop
-* \(C_{t-1}\) = previous candle close
-* \(L_t\) = current candle Low
-* \(ATR_t\) = current ATR
-* \(M\) = ATR multiplier
 
 ### Step 8 — Direction
 
-The direction is determined by comparing the current Close with the **previous stops**:
-
 $$
-\boxed{
-Direction_t=
+Direction_t =
 \begin{cases}
-+1 & \text{if } C_t>L_{t-1}\\
--1 & \text{if } C_t<S_{t-1}\\
++1 & \text{if } C_t > S_{t-1} \\
+-1 & \text{if } C_t < L_{t-1} \\
 Direction_{t-1} & \text{otherwise}
 \end{cases}
-}
 $$
-
-Where:
-
-* \(+1\) = bullish / long direction
-* \(-1\) = bearish / short direction
-* \(Direction_{t-1}\) = keep the previous direction when there is no crossover
 
 
 ### Step 9 — Signals
