@@ -1,0 +1,46 @@
+# WebSocket Public Upgrade
+
+**Auth:** required
+
+Request to upgrade the connection to a WebSocket streaming public market data. No authentication, OTP, or query parameters are required.
+
+
+| Surface | Gateway | Auth |
+|---------|---------|------|
+| Public market data | `wss://api.derivws.com/trading/v1/options/ws/public` | None — connect directly |
+| Authenticated trading | OTP-issued `wss://api.derivws.com/trading/v1/options/ws/real` or `/ws/demo` | OTP URL from `POST /trading/v1/options/accounts/{accountId}/otp` |
+
+Public market data needs no auth. Authenticated trading uses an OTP URL (issued from a REST call with your Bearer token — OAuth 2.0 or PAT; PAT auth also sends `Deriv-App-ID`), then connect to that URL and send messages directly. The symbol field is `underlying_symbol`. See [authentication](https://developers.deriv.com/llms/authentication.md).
+
+- Request schema: [`ws_public_request.schema.json`](https://developers.deriv.com/schemas/ws_public_request.schema.json)
+- Response schema: [`ws_public_response.schema.json`](https://developers.deriv.com/schemas/ws_public_response.schema.json)
+
+## Example
+
+```javascript
+const ws = new WebSocket("wss://api.derivws.com/trading/v1/options/ws/public");
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+  "ws_public": 1
+}));
+};
+ws.onmessage = (event) => console.log(JSON.parse(event.data));
+```
+
+## Request
+
+## Response
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `status` | integer | Yes | HTTP status code confirming the protocol switch. |
+| `headers` | object | Yes |  |
+
+### `headers`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `Upgrade` | string | Yes | Confirms the connection was upgraded to the WebSocket protocol. |
+| `Connection` | string | Yes | Confirms the connection has been upgraded. |
+
+_Source: [ws-public](https://developers.deriv.com/llms/ws-public.md)._

@@ -1,0 +1,1 @@
+[20:58:41] [DEBUG] URL DATA: {'data': {'url': 'wss://api.derivws.com/trading/v1/options/ws/demo?otp=jdQRnDIF'}, 'meta': {'endpoint': '/trading/v1/options/accounts/{accountId}/otp', 'method': 'POST', 'timing': 170}}
